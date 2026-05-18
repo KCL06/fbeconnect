@@ -26,18 +26,21 @@ function GlobalErrorBoundary() {
   
   // Catch Vite chunk load errors (happens when deploying new versions)
   if (error?.message?.includes("Failed to fetch dynamically imported module")) {
+    // Auto-reload once to pick up the new deployment chunk hashes.
+    // Prevents an infinite reload loop by only reloading if we haven't just done so.
+    const reloadKey = "app_chunk_reload";
+    const lastReload = Number(sessionStorage.getItem(reloadKey) ?? 0);
+    if (Date.now() - lastReload > 10_000) {
+      sessionStorage.setItem(reloadKey, String(Date.now()));
+      window.location.reload();
+    }
+    // Show a brief loader while the reload is happening
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-emerald-900 text-white p-8 text-center">
-        <h1 className="text-3xl font-bold mb-4">Update Available</h1>
-        <p className="text-emerald-200 mb-6 max-w-md">
-          A new version of the platform has been released. Your browser is trying to load an old file that no longer exists.
-        </p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg"
-        >
-          Refresh Page to Update
-        </button>
+      <div className="min-h-screen flex items-center justify-center bg-emerald-900">
+        <div className="text-center text-white">
+          <div className="w-10 h-10 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-emerald-200 text-sm">Updating FBEconnect...</p>
+        </div>
       </div>
     );
   }
