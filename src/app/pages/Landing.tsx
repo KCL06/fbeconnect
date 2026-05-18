@@ -89,8 +89,6 @@ export default function Landing() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { session, loading: authLoading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
-  const [formStep, setFormStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
   const [formData, setFormData] = useState({
     email: "",
@@ -168,20 +166,7 @@ export default function Landing() {
 
   const resetRole = () => {
     setSelectedRole(null);
-    setFormData({
-      email: "",
-      password: "",
-      fullName: "",
-      farmName: "",
-      farmSize: "",
-      cropType: "",
-      businessName: "",
-      businessType: "",
-      location: "",
-      specialization: "",
-      yearsExperience: "",
-      certification: "",
-    });
+    setFormData({ email: "", password: "" });
   };
 
   return (
