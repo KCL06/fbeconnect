@@ -148,8 +148,17 @@ export default function Layout() {
   const pageTitle = getPageTitle(location.pathname);
 
   const handleLogout = async () => {
-    await signOut();
-    navigate("/login");
+    try {
+      await signOut();
+    } catch (err) {
+      console.error("Sign out failed:", err);
+      // Force clear local storage if Supabase fails
+      localStorage.clear();
+      sessionStorage.clear();
+    } finally {
+      // Force reload to completely wipe memory state and send to login
+      window.location.href = "/login";
+    }
   };
 
   return (
