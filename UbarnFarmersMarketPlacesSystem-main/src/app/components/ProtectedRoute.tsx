@@ -8,14 +8,8 @@ import Loading from "./Loading";
  * Wraps all routes under /app/* to enforce authentication.
  *
  *   1. While auth is being verified → Shows a full-screen loading spinner.
- *   2. If no valid session → Redirects to /login.
+ *   2. If not authenticated → Redirects to /login.
  *   3. If authenticated → Renders the child route via <Outlet />.
- *
- * NOTE: We only check for a valid SESSION here, not for a complete profile.
- * Checking for profile caused an infinite redirect loop:
- *   safety-timer fires → profile not yet loaded → redirect /login →
- *   auth resolves → login redirects /app → profile still null → loop.
- * Individual pages receive profile from AuthContext and handle null gracefully.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export default function ProtectedRoute() {
@@ -27,7 +21,7 @@ export default function ProtectedRoute() {
     return <Loading fullScreen message="Verifying session..." />;
   }
 
-  // No valid session → redirect to login
+  // Redirect unauthenticated users to login
   if (!session) {
     return (
       <Navigate

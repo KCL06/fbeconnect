@@ -78,15 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Safety net: if something goes badly wrong, loading WILL resolve after 3s
-    // (reduced from 6s since getSession is near-instant from localStorage)
+    // Hard safety net: no matter what happens, loading WILL be false after 6 seconds
     const safetyTimer = setTimeout(() => {
       if (mounted && !initialLoadDone.current) {
         console.warn("[Auth] Safety timer fired — forcing loading=false");
         initialLoadDone.current = true;
         setLoading(false);
       }
-    }, 3000);
+    }, 6000);
 
     // 1. Get the initial session
     const init = async () => {
@@ -94,22 +93,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session: s } } = await supabase.auth.getSession();
         if (!mounted) return;
 
-        // ── CRITICAL: Resolve loading as soon as we know the session state ──
-        // Do NOT wait for fetchProfile() — that can be slow (DB round-trip).
-        // Profile loads silently in the background; pages handle null gracefully.
         setSession(s);
         setUser(s?.user ?? null);
-        initialLoadDone.current = true;
-        setLoading(false);          // ← Unblocks ProtectedRoute immediately
 
-        // Then fetch profile asynchronously without holding loading=true
         if (s?.user) {
-          fetchProfile(s.user.id).then(p => {
-            if (mounted) setProfile(p);
-          });
+          const p = await fetchProfile(s.user.id);
+          if (!mounted) return;
+          setProfile(p);
         }
       } catch (err) {
         console.error("[Auth] Init error:", err);
+      } finally {
         if (mounted) {
           initialLoadDone.current = true;
           setLoading(false);
@@ -135,11 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (changedSession?.user) {
           const p = await fetchProfile(changedSession.user.id);
-          if (!mounted) return;
-          // If profile is null, ProtectedRoute handles the redirect.
-          // Do NOT call signOut() here — it triggers another onAuthStateChange
-          // SIGNED_OUT event which re-enters this handler causing an infinite loop.
-          setProfile(p);
+          if (mounted) setProfile(p);
         } else {
           setProfile(null);
         }
@@ -195,8 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [profile]
   );
 
-  // Authenticated = has a valid session and auth init is complete.
-  // ProtectedRoute separately checks for profile before rendering any page.
   const isAuthenticated = !!session && !loading;
 
   return (
