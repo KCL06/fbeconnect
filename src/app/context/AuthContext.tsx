@@ -56,24 +56,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * Fetch profile — simple, reliable, no AbortController overhead.
-   * Returns null on any error; never throws, never hangs.
+   * If the DB row is missing (Ghost Account), falls back to generating a
+   * synthetic profile from the user's JWT metadata to keep the app working.
    */
-  const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
+  const fetchProfile = useCallback(async (userObj: User): Promise<Profile | null> => {
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, email, phone, role, avatar_url")
-        .eq("id", userId)
+        .eq("id", userObj.id)
         .single();
 
       if (error && error.code !== "PGRST116") {
         console.error("[Auth] Profile fetch error:", error.message);
-        return null;
+        // Fallthrough to synthetic profile on error
       }
-      return (data as Profile) ?? null;
+      
+      if (data) {
+        return data as Profile;
+      }
+
+      // ── SYNTHETIC PROFILE FALLBACK (Ghost Account Fix) ──
+      console.warn("[Auth] Profile missing in DB. Using synthetic JWT profile.");
+      return {
+        id: userObj.id,
+        email: userObj.email || "",
+        full_name: userObj.user_metadata?.full_name || "New User",
+        role: userObj.user_metadata?.role || "buyer",
+        avatar_url: null,
+      } as Profile;
+      
     } catch (err: any) {
       console.error("[Auth] Profile fetch failed:", err?.message || err);
-      return null;
+      // Ultimate fallback
+      return {
+        id: userObj.id,
+        email: userObj.email || "",
+        full_name: userObj.user_metadata?.full_name || "New User",
+        role: userObj.user_metadata?.role || "buyer",
+        avatar_url: null,
+      } as Profile;
     }
   }, []);
 
@@ -104,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
 
         if (s?.user) {
-          const p = await fetchProfile(s.user.id);
+          const p = await fetchProfile(s.user);
           if (!mounted) return;
           setProfile(p);
         }
@@ -136,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(changedSession?.user ?? null);
 
         if (changedSession?.user) {
-          const p = await fetchProfile(changedSession.user.id);
+          const p = await fetchProfile(changedSession.user);
           if (mounted) {
             setProfile(p);
             setProfileLoaded(true);
@@ -182,7 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (user) {
-      const p = await fetchProfile(user.id);
+      const p = await fetchProfile(user);
       setProfile(p);
     }
   }, [user, fetchProfile]);

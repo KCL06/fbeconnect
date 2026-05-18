@@ -43,7 +43,13 @@ export async function signUp(
       },
     },
   });
-  if (error) throw error;
+  if (error) {
+    console.error("[Auth] Sign Up Error:", error.message);
+    if (error.message.includes("already registered")) {
+      throw new Error("Registration failed. Please try a different email or log in.");
+    }
+    throw new Error("An error occurred during registration. Please try again later.");
+  }
   return data;
 }
 
@@ -59,7 +65,11 @@ export async function signIn(email: string, password: string) {
     email: cleanEmail,
     password,
   });
-  if (error) throw error;
+  if (error) {
+    console.error("[Auth] Sign In Error:", error.message);
+    // Always return a generic error to prevent user enumeration
+    throw new Error("Invalid login credentials. Please check your email and password and try again.");
+  }
   return data;
 }
 

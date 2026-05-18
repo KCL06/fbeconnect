@@ -8,6 +8,7 @@ import Logo from "../components/Logo";
 import { signIn } from "../../lib/auth";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
+import { useRateLimit } from "../../hooks/useRateLimit";
 
 type UserRole = "farmer" | "buyer" | "expert" | null;
 
@@ -109,6 +110,7 @@ export default function Landing() {
   const [showPassword, setShowPassword] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [hasJustLoggedIn, setHasJustLoggedIn] = useState(false);
+  const { isThrottled, remainingSeconds, recordAttempt, reset } = useRateLimit({ storageKey: "landing_login_attempts" });
 
   // ── Redirect after explicit login ─────────────────
   // We only auto-redirect if the user *just* logged in via this page's form.
@@ -145,6 +147,11 @@ export default function Landing() {
       return;
     }
 
+    if (isLogin && isThrottled) {
+      toast.error(`Too many attempts. Please wait ${remainingSeconds}s.`);
+      return;
+    }
+
     if (isLogin) {
       // Real Supabase login — navigate is handled by the session useEffect above
       setIsSubmitting(true);
@@ -154,8 +161,10 @@ export default function Landing() {
           new Promise((_, reject) => setTimeout(() => reject(new Error("Login request timed out. Please check your connection.")), 10000))
         ]);
         toast.success("Welcome back to FBEconnect!");
+        reset();
         setHasJustLoggedIn(true);
       } catch (err: unknown) {
+        recordAttempt();
         const msg = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
         toast.error(msg);
       } finally {
@@ -566,11 +575,13 @@ export default function Landing() {
 
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || (isLogin && isThrottled)}
                       className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                     >
                       {isSubmitting ? (
                         <><Loader2 className="w-5 h-5 animate-spin" /> Signing in...</>
+                      ) : (isLogin && isThrottled) ? (
+                        <>Locked ({remainingSeconds}s)</>
                       ) : isLogin ? (
                         <>Login to FBEconnect <ArrowRight className="w-5 h-5" /></>
                       ) : (
