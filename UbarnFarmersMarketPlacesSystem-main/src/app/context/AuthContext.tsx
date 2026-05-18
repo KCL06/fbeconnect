@@ -83,15 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (mounted && !initialLoadDone.current) {
         console.warn("[Auth] Safety timer fired — forcing loading=false");
         initialLoadDone.current = true;
-        
-        // If we timed out without resolving a valid session + profile, ensure state is cleared
-        setSession(prev => {
-          if (!prev) {
-            setUser(null);
-            setProfile(null);
-          }
-          return prev;
-        });
         setLoading(false);
       }
     }, 6000);
@@ -108,17 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (s?.user) {
           const p = await fetchProfile(s.user.id);
           if (!mounted) return;
-          
-          if (p) {
-            setProfile(p);
-          } else {
-            // Valid session but NO profile found -> Ghost account. Force cleanup.
-            console.error("[Auth] Ghost account detected on init. Clearing session.");
-            await supabase.auth.signOut();
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-          }
+          // If profile is null (ghost account or DB issue), ProtectedRoute will
+          // redirect to /login — no need to call signOut() here which would cause
+          // an onAuthStateChange loop.
+          setProfile(p);
         }
       } catch (err) {
         console.error("[Auth] Init error:", err);
@@ -149,17 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (changedSession?.user) {
           const p = await fetchProfile(changedSession.user.id);
           if (!mounted) return;
-          
-          if (p) {
-            setProfile(p);
-          } else {
-            // Valid session but NO profile found -> Ghost account. Force cleanup.
-            console.error("[Auth] Ghost account detected on auth state change. Clearing session.");
-            await supabase.auth.signOut();
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-          }
+          // If profile is null, ProtectedRoute handles the redirect.
+          // Do NOT call signOut() here — it triggers another onAuthStateChange
+          // SIGNED_OUT event which re-enters this handler causing an infinite loop.
+          setProfile(p);
         } else {
           setProfile(null);
         }
@@ -215,7 +192,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [profile]
   );
 
-  const isAuthenticated = !!session && !!profile && !loading;
+  // Authenticated = has a valid session and auth init is complete.
+  // ProtectedRoute separately checks for profile before rendering any page.
+  const isAuthenticated = !!session && !loading;
 
   return (
     <AuthContext.Provider

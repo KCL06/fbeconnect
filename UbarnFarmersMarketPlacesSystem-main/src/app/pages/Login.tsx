@@ -133,8 +133,18 @@ export default function Login() {
     }
   };
 
-  // Show a minimal loading state while checking existing session
-  if (loading) return null;
+  // While auth is initializing, show a minimal full-screen loader.
+  // Returning null caused a blank-screen flicker on every page load.
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-700 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+          <p className="text-emerald-300 text-sm font-medium">Checking session…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-700 relative overflow-hidden">
