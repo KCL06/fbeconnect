@@ -48,7 +48,7 @@ export default function MyFarmRecords() {
 
   useEffect(() => {
     if (user) fetchRecords();
-  }, [user]);
+  }, [user?.id]);
 
   const fetchRecords = async () => {
     if (!user) return;

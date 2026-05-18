@@ -33,9 +33,9 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id || !profile?.role) return;
     fetchDashboardData();
-  }, [user]);
+  }, [user?.id, profile?.role]);
 
   const fetchDashboardData = async () => {
     if (!user) return;

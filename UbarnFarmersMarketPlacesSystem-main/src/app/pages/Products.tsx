@@ -41,7 +41,7 @@ export default function Products() {
 
   useEffect(() => {
     fetchProducts();
-  }, [user]);
+  }, [user?.id]);
 
   const fetchProducts = async () => {
     if (!user) return;

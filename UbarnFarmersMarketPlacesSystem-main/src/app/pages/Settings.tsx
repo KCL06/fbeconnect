@@ -47,7 +47,7 @@ export default function Settings() {
       fetchProfile();
       checkMfaStatus();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const checkMfaStatus = async () => {
     try {
