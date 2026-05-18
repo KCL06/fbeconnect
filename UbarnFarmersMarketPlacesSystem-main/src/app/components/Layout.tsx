@@ -324,7 +324,28 @@ export default function Layout() {
         </div>
 
         {/* Page Content */}
-        <div className="flex-1"><Outlet /></div>
+        <div className="flex-1">
+          {!profile ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+              <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-6 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+                <LogOut className="w-10 h-10 text-red-400" />
+              </div>
+              <h2 className="text-3xl font-bold text-white mb-4">Account Setup Incomplete</h2>
+              <p className="text-emerald-100 text-lg max-w-lg mb-8 leading-relaxed">
+                You are currently logged in, but your <strong className="text-white">Profile Data</strong> is missing from the database (Ghost Account). 
+                Please log out and recreate your account.
+              </p>
+              <button 
+                onClick={handleLogout}
+                className="bg-red-600 hover:bg-red-500 text-white font-bold py-4 px-10 rounded-xl shadow-[0_0_20px_rgba(239,68,68,0.3)] transition-all hover:scale-105"
+              >
+                Force Log Out Now
+              </button>
+            </div>
+          ) : (
+            <Outlet />
+          )}
+        </div>
 
         {/* App Footer — clean, no duplicate nav links */}
         <footer className="bg-emerald-950/80 backdrop-blur-sm border-t border-emerald-700/50 text-white py-5 mt-auto">
