@@ -95,16 +95,6 @@ export default function Landing() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    fullName: "",
-    farmName: "",
-    farmSize: "",
-    cropType: "",
-    businessName: "",
-    businessType: "",
-    location: "",
-    specialization: "",
-    yearsExperience: "",
-    certification: "",
   });
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -205,7 +195,7 @@ export default function Landing() {
       />
 
       <div className="relative z-10 flex flex-col min-h-screen">
-        <Header />
+        <Header isAuthenticated={!!session && !authLoading} />
         {/* Hero Section */}
         <div className="container mx-auto px-6 py-12">
           <div className="grid lg:grid-cols-2 gap-12 items-center min-h-screen">
@@ -349,176 +339,7 @@ export default function Landing() {
                       ← Change role
                     </button>
 
-                    {!isLogin && (
-                      <div>
-                        <label className="block text-emerald-100 text-sm font-medium mb-2">
-                          Full Name
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.fullName}
-                          onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          placeholder="Enter your full name"
-                          required
-                        />
-                      </div>
-                    )}
-
-                    {/* Farmer Fields */}
-                    {selectedRole === "farmer" && !isLogin && (
-                      <>
-                        <div>
-                          <label className="block text-emerald-100 text-sm font-medium mb-2">
-                            Farm Name
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.farmName}
-                            onChange={(e) => setFormData({ ...formData, farmName: e.target.value })}
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            placeholder="e.g., Green Valley Farm"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-emerald-100 text-sm font-medium mb-2">
-                            Farm Size (acres)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.farmSize}
-                            onChange={(e) => setFormData({ ...formData, farmSize: e.target.value })}
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            placeholder="e.g., 10 acres"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-emerald-100 text-sm font-medium mb-2">
-                            Primary Crop Type
-                          </label>
-                          <select
-                            value={formData.cropType}
-                            onChange={(e) => setFormData({ ...formData, cropType: e.target.value })}
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            required
-                          >
-                            <option value="">Select crop type</option>
-                            <option value="vegetables">Vegetables</option>
-                            <option value="grains">Grains</option>
-                            <option value="fruits">Fruits</option>
-                            <option value="dairy">Dairy</option>
-                            <option value="poultry">Poultry</option>
-                            <option value="mixed">Mixed Farming</option>
-                          </select>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Buyer Fields */}
-                    {selectedRole === "buyer" && !isLogin && (
-                      <>
-                        <div>
-                          <label className="block text-emerald-100 text-sm font-medium mb-2">
-                            Business Name
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.businessName}
-                            onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            placeholder="e.g., Fresh Foods Ltd"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-emerald-100 text-sm font-medium mb-2">
-                            Business Type
-                          </label>
-                          <select
-                            value={formData.businessType}
-                            onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            required
-                          >
-                            <option value="">Select business type</option>
-                            <option value="retailer">Retailer</option>
-                            <option value="wholesaler">Wholesaler</option>
-                            <option value="processor">Food Processor</option>
-                            <option value="exporter">Exporter</option>
-                            <option value="restaurant">Restaurant/Hotel</option>
-                            <option value="cooperative">Cooperative</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-emerald-100 text-sm font-medium mb-2">
-                            Business Location
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.location}
-                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            placeholder="e.g., Nairobi, Kenya"
-                            required
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {/* Expert Fields */}
-                    {selectedRole === "expert" && !isLogin && (
-                      <>
-                        <div>
-                          <label className="block text-emerald-100 text-sm font-medium mb-2">
-                            Specialization
-                          </label>
-                          <select
-                            value={formData.specialization}
-                            onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            required
-                          >
-                            <option value="">Select specialization</option>
-                            <option value="agronomy">Agronomy</option>
-                            <option value="pest-management">Pest Management</option>
-                            <option value="soil-science">Soil Science</option>
-                            <option value="irrigation">Irrigation Systems</option>
-                            <option value="livestock">Livestock Management</option>
-                            <option value="organic-farming">Organic Farming</option>
-                            <option value="business">Agricultural Business</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-emerald-100 text-sm font-medium mb-2">
-                            Years of Experience
-                          </label>
-                          <input
-                            type="number"
-                            value={formData.yearsExperience}
-                            onChange={(e) => setFormData({ ...formData, yearsExperience: e.target.value })}
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            placeholder="e.g., 10"
-                            min="1"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-emerald-100 text-sm font-medium mb-2">
-                            Certification/Qualification
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.certification}
-                            onChange={(e) => setFormData({ ...formData, certification: e.target.value })}
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            placeholder="e.g., MSc Agriculture, Certified Agronomist"
-                            required
-                          />
-                        </div>
-                      </>
-                    )}
+                    
 
                     <div>
                       <label className="block text-emerald-100 text-sm font-medium mb-2">
