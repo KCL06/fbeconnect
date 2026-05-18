@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAppCache } from "../../lib/useAppCache";
 import { TrendingUp, Package, ShoppingBag, FileText, MessageSquare, ArrowRight, DollarSign, TrendingDown, Loader2, InboxIcon } from "lucide-react";
 import { Link } from "react-router";
 import { useAuth } from "../context/AuthContext";
@@ -28,18 +29,8 @@ const quickActionKeys = [
 export default function Dashboard() {
   const { profile, user } = useAuth();
   const { t } = useLanguage();
-  const [stats, setStats] = useState<DashboardStats>({ totalRevenue: 0, activeProducts: 0, pendingOrders: 0, farmRecords: 0 });
-  const [recentMessages, setRecentMessages] = useState<RecentMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user?.id || !profile?.role) return;
-    fetchDashboardData();
-  }, [user?.id, profile?.role]);
-
   const fetchDashboardData = async () => {
-    if (!user) return;
-    setIsLoading(true);
+    if (!user) throw new Error("User required");
     try {
       const role = profile?.role;
 
@@ -92,30 +83,31 @@ export default function Dashboard() {
         farmRecords = count ?? 0;
       }
 
-      setStats({ totalRevenue: revenue, activeProducts, pendingOrders, farmRecords });
+      const recentMsgs = (msgs ?? []).map((m: any) => ({
+        id: m.id,
+        content: m.content,
+        created_at: m.created_at,
+        sender_name: m.profiles?.full_name ?? "Unknown",
+      }));
 
-      // ── Recent Messages ──
-      const { data: msgs } = await supabase
-        .from("messages")
-        .select("id, content, created_at, profiles!sender_id(full_name)")
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .order("created_at", { ascending: false })
-        .limit(4);
-
-      setRecentMessages(
-        (msgs ?? []).map((m: any) => ({
-          id: m.id,
-          content: m.content,
-          created_at: m.created_at,
-          sender_name: m.profiles?.full_name ?? "Unknown",
-        }))
-      );
+      return {
+        stats: { totalRevenue: revenue, activeProducts, pendingOrders, farmRecords },
+        recentMessages: recentMsgs
+      };
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-    } finally {
-      setIsLoading(false);
+      throw err;
     }
   };
+
+  const { data, isLoading } = useAppCache(
+    user?.id && profile?.role ? `dashboard_${user.id}_${profile.role}` : null,
+    fetchDashboardData,
+    [user?.id, profile?.role]
+  );
+
+  const stats = data?.stats || { totalRevenue: 0, activeProducts: 0, pendingOrders: 0, farmRecords: 0 };
+  const recentMessages = data?.recentMessages || [];
 
   const role = profile?.role;
 

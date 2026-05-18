@@ -3,7 +3,8 @@ import {
   Award, Shield, ExternalLink, TrendingUp, Users, Leaf,
   GraduationCap, Briefcase
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useAppCache } from "../../lib/useAppCache";
 import { Link } from "react-router";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -32,7 +33,39 @@ const roleConfig: Record<string, { label: string; icon: React.ElementType; color
 
 export default function Profile() {
   const { user, profile: authProfile } = useAuth();
-  const [profileData, setProfileData] = useState<ProfileData>({
+  const fetchProfileData = async (): Promise<ProfileData | null> => {
+    if (!user) throw new Error("User required");
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(`*, farmer_profiles(*), expert_profiles(*), buyer_profiles(*)`)
+      .eq("id", user.id)
+      .single();
+
+    if (error && error.code !== "PGRST116") throw error;
+    if (!data) return null;
+
+    return {
+      fullName: data.full_name || "",
+      email: data.email || "",
+      phone: data.phone || "",
+      farmName: data.farmer_profiles?.farm_name || "",
+      location: data.farmer_profiles?.farm_location || data.buyer_profiles?.location || "",
+      bio: data.farmer_profiles?.bio || data.expert_profiles?.bio || "",
+      avatarUrl: data.avatar_url || "",
+      role: data.role || "farmer",
+      memberSince: data.created_at ? new Date(data.created_at).getFullYear().toString() : new Date().getFullYear().toString(),
+      specialization: data.expert_profiles?.specialization || "",
+      businessName: data.buyer_profiles?.business_name || "",
+    };
+  };
+
+  const { data, isLoading } = useAppCache<ProfileData | null>(
+    user?.id ? `profile_${user.id}` : null,
+    fetchProfileData,
+    [user?.id]
+  );
+
+  const profileData = data || {
     fullName: "",
     email: "",
     phone: "",
@@ -42,43 +75,6 @@ export default function Profile() {
     avatarUrl: "",
     role: "farmer",
     memberSince: "",
-  });
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) fetchProfile();
-  }, [user?.id]);
-
-  const fetchProfile = async () => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select(`*, farmer_profiles(*), expert_profiles(*), buyer_profiles(*)`)
-        .eq("id", user?.id)
-        .single();
-
-      if (error && error.code !== "PGRST116") throw error;
-      if (!data) return;
-
-      setProfileData({
-        fullName: data.full_name || "",
-        email: data.email || "",
-        phone: data.phone || "",
-        farmName: data.farmer_profiles?.farm_name || "",
-        location: data.farmer_profiles?.farm_location || data.buyer_profiles?.location || "",
-        bio: data.farmer_profiles?.bio || data.expert_profiles?.bio || "",
-        avatarUrl: data.avatar_url || "",
-        role: data.role || "farmer",
-        memberSince: data.created_at ? new Date(data.created_at).getFullYear().toString() : new Date().getFullYear().toString(),
-        specialization: data.expert_profiles?.specialization || "",
-        businessName: data.buyer_profiles?.business_name || "",
-      });
-    } catch (err: any) {
-      console.error("Error fetching profile:", err.message);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const role = roleConfig[profileData.role] || roleConfig.farmer;

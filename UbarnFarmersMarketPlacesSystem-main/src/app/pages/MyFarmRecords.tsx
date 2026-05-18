@@ -1,5 +1,6 @@
 import { Calendar, Sprout, Droplets, Bug, Plus, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useAppCache } from "../../lib/useAppCache";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
@@ -32,9 +33,27 @@ const typeColors: Record<string, string> = {
 
 export default function MyFarmRecords() {
   const { user } = useAuth();
-  const [records, setRecords] = useState<FarmRecord[]>([]);
+  const fetchRecordsData = async (): Promise<FarmRecord[]> => {
+    if (!user) throw new Error("User required");
+    const { data, error } = await supabase
+      .from("farm_records")
+      .select("*")
+      .eq("farmer_id", user.id)
+      .order("date", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  };
+
+  const { data: recordsData, isLoading, refetch: fetchRecords } = useAppCache<FarmRecord[]>(
+    user?.id ? `farm_records_${user.id}` : null,
+    fetchRecordsData,
+    [user?.id]
+  );
+  
+  const records = recordsData || [];
+
   const [filter, setFilter] = useState<string>("all");
-  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Form State
@@ -45,28 +64,6 @@ export default function MyFarmRecords() {
     area: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (user) fetchRecords();
-  }, [user?.id]);
-
-  const fetchRecords = async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from("farm_records")
-        .select("*")
-        .eq("farmer_id", user.id)
-        .order("date", { ascending: false });
-
-      if (error) throw error;
-      setRecords(data || []);
-    } catch (err: any) {
-      toast.error("Failed to load records: " + err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();

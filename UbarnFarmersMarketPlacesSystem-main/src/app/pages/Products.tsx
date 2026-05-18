@@ -1,5 +1,6 @@
 import { Plus, Edit, Eye, TrendingUp, X, Save, Trash2, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useAppCache } from "../../lib/useAppCache";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -20,8 +21,26 @@ const defaultCategories = ["Vegetables", "Grains", "Dairy", "Poultry", "Tubers",
 
 export default function Products() {
   const { user } = useAuth();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const fetchProductsData = async (): Promise<Product[]> => {
+    if (!user) throw new Error("User required");
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("farmer_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  };
+
+  const { data: productsData, isLoading, refetch: fetchProducts } = useAppCache<Product[]>(
+    user?.id ? `products_${user.id}` : null,
+    fetchProductsData,
+    [user?.id]
+  );
+  
+  const products = productsData || [];
+
   const [selectedCategory, setSelectedCategory] = useState("All");
   
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
@@ -38,28 +57,6 @@ export default function Products() {
     quantity_available: "",
     in_stock: true,
   });
-
-  useEffect(() => {
-    fetchProducts();
-  }, [user?.id]);
-
-  const fetchProducts = async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("farmer_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (err: any) {
-      toast.error("Failed to load products: " + err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Build dynamic categories from defaults + whatever farmers have actually used
   const productCategories = [...new Set([...defaultCategories, ...products.map(p => p.category).filter(Boolean)])];
