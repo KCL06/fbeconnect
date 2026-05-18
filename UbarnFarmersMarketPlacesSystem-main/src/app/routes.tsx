@@ -206,9 +206,9 @@ export const router = createBrowserRouter([
             ],
           },
 
-          // ── Buyer-only routes ───────────────────────────────────────────
+          // ── Buyer + Farmer routes (shopping) ────────────────────────────
           {
-            element: <RoleGuard allowedRoles={["buyer"]} />,
+            element: <RoleGuard allowedRoles={["farmer", "buyer"]} />,
             children: [
               { path: "cart",              element: <PageSuspense><Cart /></PageSuspense> },
             ],

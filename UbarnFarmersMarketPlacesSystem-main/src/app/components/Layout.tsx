@@ -26,7 +26,7 @@ const menuItems = [
   { path: "/app/order-tracking", tKey: "orders", label: "Order Tracking", icon: MapPin, roles: ["farmer", "buyer"] },
   { path: "/app/user-feedback", label: "User Feedback", icon: MessageCircle, roles: ["admin"] },
   { path: "/app/expert-knowledge", label: "Expert Knowledge", icon: BookOpen, roles: ["farmer", "buyer", "expert", "admin"] },
-  { path: "/app/cart", label: "My Cart", icon: ShoppingCart, roles: ["buyer"] },
+  { path: "/app/cart", label: "My Cart", icon: ShoppingCart, roles: ["farmer", "buyer"] },
   { path: "/app/profile", label: "My Profile", icon: User, roles: ["farmer", "buyer", "expert", "admin"] },
 ];
 
