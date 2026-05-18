@@ -25,6 +25,7 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  profileLoaded: boolean;
   isAuthenticated: boolean;
   hasRole: (roles: UserRole[]) => boolean;
   signOut: () => Promise<void>;
@@ -36,6 +37,7 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   profile: null,
   loading: true,
+  profileLoaded: false,
   isAuthenticated: false,
   hasRole: () => false,
   signOut: async () => {},
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   // Track whether initial load has completed — prevents re-setting loading to true
   const initialLoadDone = useRef(false);
@@ -95,6 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setSession(s);
         setUser(s?.user ?? null);
+        
+        // Resolve initial loading immediately - unblocks the app shell
+        initialLoadDone.current = true;
+        setLoading(false);
 
         if (s?.user) {
           const p = await fetchProfile(s.user.id);
@@ -107,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           initialLoadDone.current = true;
           setLoading(false);
+          setProfileLoaded(true);
         }
       }
     };
@@ -129,9 +137,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (changedSession?.user) {
           const p = await fetchProfile(changedSession.user.id);
-          if (mounted) setProfile(p);
+          if (mounted) {
+            setProfile(p);
+            setProfileLoaded(true);
+          }
         } else {
           setProfile(null);
+          setProfileLoaded(true);
         }
       }
     );
@@ -165,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     setLoading(false);
+    setProfileLoaded(true);
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -194,6 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         loading,
+        profileLoaded,
         isAuthenticated,
         hasRole,
         signOut: handleSignOut,

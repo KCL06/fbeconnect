@@ -33,12 +33,12 @@ interface RoleGuardProps {
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export default function RoleGuard({ allowedRoles }: RoleGuardProps) {
-  const { profile, loading } = useAuth();
+  const { profile, loading, profileLoaded } = useAuth();
   const location = useLocation();
   const toastShown = useRef(false); // Prevent duplicate toasts on re-render
 
-  // Still fetching the profile
-  if (loading) {
+  // Still fetching the profile (or auth state)
+  if (loading || !profileLoaded) {
     return <Loading fullScreen message="Checking permissions..." />;
   }
 
