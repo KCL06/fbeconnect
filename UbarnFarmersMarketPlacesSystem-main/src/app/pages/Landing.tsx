@@ -149,7 +149,10 @@ export default function Landing() {
       // Real Supabase login — navigate is handled by the session useEffect above
       setIsSubmitting(true);
       try {
-        await signIn(formData.email, formData.password);
+        await Promise.race([
+          signIn(formData.email, formData.password),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Login request timed out. Please check your connection.")), 10000))
+        ]);
         toast.success("Welcome back to FBEconnect!");
         setHasJustLoggedIn(true);
       } catch (err: unknown) {
