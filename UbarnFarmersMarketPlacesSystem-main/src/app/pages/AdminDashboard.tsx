@@ -211,6 +211,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 shadow-lg">
               <h3 className="text-white font-bold text-lg mb-4">Monthly Sales Activity</h3>
+            <div className="w-full" style={{ height: 250 }}>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={salesData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
@@ -221,8 +222,10 @@ export default function AdminDashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            </div>
             <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 shadow-lg">
               <h3 className="text-white font-bold text-lg mb-4">Platform User Growth</h3>
+            <div className="w-full" style={{ height: 250 }}>
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={userGrowthData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
@@ -232,6 +235,7 @@ export default function AdminDashboard() {
                   <Line type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={3} dot={{ fill: "#3b82f6", r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
             </div>
           </div>
         </>
