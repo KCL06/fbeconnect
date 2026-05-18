@@ -199,10 +199,6 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-12 items-center min-h-screen">
             {/* Left Side - Info */}
             <div className="text-white">
-              <div className="flex items-center gap-2 mb-6">
-                <Logo size="lg" />
-              </div>
-
               <h2 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight">
                 {t('hero_title')}
               </h2>
