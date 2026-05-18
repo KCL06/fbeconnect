@@ -195,7 +195,7 @@ export default function Landing() {
       />
 
       <div className="relative z-10 flex flex-col min-h-screen">
-        <Header isAuthenticated={!!session && !authLoading} />
+        <Header />
         {/* Hero Section */}
         <div className="container mx-auto px-6 py-12">
           <div className="grid lg:grid-cols-2 gap-12 items-center min-h-screen">
@@ -241,7 +241,7 @@ export default function Landing() {
             </div>
 
             {/* Right Side - Auth Form */}
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl relative overflow-hidden">
+            <div id="auth-form" className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl relative overflow-hidden">
               {/* Background Image for Form */}
               <div
                 className="absolute inset-0 opacity-5 bg-cover bg-center"

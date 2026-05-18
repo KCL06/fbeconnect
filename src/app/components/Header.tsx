@@ -102,12 +102,22 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
                 </>
               ) : (
                 <>
-                  <Link
-                    to="/login"
-                    className="px-4 py-2 text-emerald-100 hover:text-white border border-emerald-600 hover:border-emerald-400 rounded-lg transition-all text-sm font-medium"
-                  >
-                    Login
-                  </Link>
+                  {location.pathname === "/" ? (
+                    <a
+                      href="#auth-form"
+                      onClick={(e) => handleAnchorClick(e, "#auth-form")}
+                      className="px-4 py-2 text-emerald-100 hover:text-white border border-emerald-600 hover:border-emerald-400 rounded-lg transition-all text-sm font-medium cursor-pointer"
+                    >
+                      Login
+                    </a>
+                  ) : (
+                    <Link
+                      to="/login"
+                      className="px-4 py-2 text-emerald-100 hover:text-white border border-emerald-600 hover:border-emerald-400 rounded-lg transition-all text-sm font-medium"
+                    >
+                      Login
+                    </Link>
+                  )}
                   <Link
                     to="/register"
                     className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all shadow-md hover:shadow-emerald-500/25 text-sm font-medium"
@@ -178,13 +188,26 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
                   </>
                 ) : (
                   <>
-                    <Link
-                      to="/login"
-                      className="px-4 py-3 text-emerald-100 border border-emerald-600 rounded-lg text-sm font-medium text-center"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Login
-                    </Link>
+                    {location.pathname === "/" ? (
+                      <a
+                        href="#auth-form"
+                        className="px-4 py-3 text-emerald-100 border border-emerald-600 rounded-lg text-sm font-medium text-center cursor-pointer"
+                        onClick={(e) => {
+                          handleAnchorClick(e, "#auth-form");
+                          setIsMobileMenuOpen(false);
+                        }}
+                      >
+                        Login
+                      </a>
+                    ) : (
+                      <Link
+                        to="/login"
+                        className="px-4 py-3 text-emerald-100 border border-emerald-600 rounded-lg text-sm font-medium text-center"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Login
+                      </Link>
+                    )}
                     <Link
                       to="/register"
                       className="px-4 py-3 bg-emerald-600 text-white rounded-lg text-sm font-medium text-center"
