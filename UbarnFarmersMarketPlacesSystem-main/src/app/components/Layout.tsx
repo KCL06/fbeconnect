@@ -2,11 +2,12 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { Home, Sprout, Package, TrendingUp, MessageSquare, ShoppingCart, Receipt, Bell, LayoutDashboard, Star, MapPin, MessageCircle, Settings, Menu, X, User, BookOpen, ChevronRight, ChevronLeft, Leaf, LogOut, CalendarCheck } from "lucide-react";
 import svgPaths from "../../imports/svg-ld7y1c2a9i";
 import { supabase } from "../../lib/supabase";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import Logo from "./Logo";
 import { useLanguage } from "../context/LanguageContext";
+import { prewarm } from "../../lib/useAppCache";
 
 const menuItems = [
   { path: "/app", tKey: "dashboard", label: "Dashboard", icon: Home, roles: ["farmer", "buyer", "expert", "admin"] },
@@ -83,7 +84,9 @@ export default function Layout() {
   const [notifCount, setNotifCount] = useState(0);
   const { profile, signOut, loading } = useAuth();
   const { t } = useLanguage();
+  const prewarmFiredRef = useRef(false);
 
+  // ── Notification count ────────────────────────────────────────────────────
   useEffect(() => {
     if (!profile?.id) return;
     supabase
@@ -93,6 +96,46 @@ export default function Layout() {
       .eq("is_read", false)
       .then(({ count }) => setNotifCount(count || 0));
   }, [profile?.id]);
+
+  // ── Background cache pre-warming ──────────────────────────────────────────
+  // After the user's profile resolves, silently pre-fetch all role-specific
+  // data so that navigating to any tab is instantaneous.
+  useEffect(() => {
+    if (!profile?.id || prewarmFiredRef.current) return;
+    prewarmFiredRef.current = true;
+
+    const uid = profile.id;
+    const role = profile.role;
+
+    // Dashboard stats (all roles)
+    prewarm(`dashboard_${uid}_${role}`, async () => {
+      const results = await Promise.allSettled([
+        role === "buyer"
+          ? supabase.from("orders").select("total_amount").eq("buyer_id", uid)
+          : role === "farmer"
+          ? supabase.from("order_items").select("quantity, price_at_purchase, products!inner(farmer_id)").eq("products.farmer_id", uid)
+          : Promise.resolve({ data: [] }),
+        supabase.from("messages").select("id, content, created_at, profiles:sender_id(full_name)").eq("receiver_id", uid).order("created_at", { ascending: false }).limit(4),
+      ]);
+      // Minimal — Dashboard will re-use this cache key and render instantly
+      return results;
+    });
+
+    // Products (farmers)
+    if (role === "farmer") {
+      prewarm(`products_${uid}`, () =>
+        supabase.from("products").select("*").eq("farmer_id", uid).order("created_at", { ascending: false }).then(r => r.data ?? [])
+      );
+      prewarm(`farm_records_${uid}`, () =>
+        supabase.from("farm_records").select("*").eq("farmer_id", uid).order("date", { ascending: false }).then(r => r.data ?? [])
+      );
+    }
+
+    // Profile data (all roles)
+    prewarm(`profile_${uid}`, () =>
+      supabase.from("profiles").select(`*, farmer_profiles(*), expert_profiles(*), buyer_profiles(*)`).eq("id", uid).single().then(r => r.data)
+    );
+  }, [profile?.id, profile?.role]);
 
   const getPageTitle = (pathname: string): string => {
     const found = menuItems.find((item) => item.path === pathname);
@@ -151,9 +194,11 @@ export default function Layout() {
                 <FarmerIcon />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-white text-sm truncate">{profile?.full_name || "My Account"}</p>
+                <p className="font-semibold text-white text-sm truncate">{profile?.full_name || ""}</p>
                 <p className="text-xs text-emerald-300 truncate">{profile?.email || ""}</p>
-                <span className="inline-block mt-1 text-xs bg-emerald-700/60 text-emerald-300 px-2 py-0.5 rounded-full capitalize">{profile?.role || "user"}</span>
+                {profile?.role && (
+                  <span className="inline-block mt-1 text-xs bg-emerald-700/60 text-emerald-300 px-2 py-0.5 rounded-full capitalize">{profile.role}</span>
+                )}
               </div>
             </Link>
           </div>

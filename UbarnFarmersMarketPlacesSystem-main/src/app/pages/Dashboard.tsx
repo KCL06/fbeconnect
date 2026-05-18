@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
 import { useAppCache } from "../../lib/useAppCache";
-import { TrendingUp, Package, ShoppingBag, FileText, MessageSquare, ArrowRight, DollarSign, TrendingDown, Loader2, InboxIcon } from "lucide-react";
+import {
+  TrendingUp, Package, ShoppingBag, FileText, MessageSquare,
+  ArrowRight, DollarSign, Loader2, InboxIcon
+} from "lucide-react";
 import { Link } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../../lib/supabase";
@@ -20,6 +22,11 @@ interface RecentMessage {
   sender_name: string;
 }
 
+interface DashboardData {
+  stats: DashboardStats;
+  recentMessages: RecentMessage[];
+}
+
 const quickActionKeys = [
   { key: "record_farm_activity" as const, path: "/app/farm-records", color: "from-amber-700 to-amber-800", icon: FileText },
   { key: "add_new_product" as const, path: "/app/products", color: "from-purple-700 to-purple-800", icon: Package },
@@ -29,86 +36,89 @@ const quickActionKeys = [
 export default function Dashboard() {
   const { profile, user } = useAuth();
   const { t } = useLanguage();
-  const fetchDashboardData = async () => {
+
+  const fetchDashboardData = async (): Promise<DashboardData> => {
     if (!user) throw new Error("User required");
-    try {
-      const role = profile?.role;
+    const role = profile?.role;
 
-      // ── Revenue: sum of orders placed by buyer OR fulfilled by farmer ──
-      let revenue = 0;
-      if (role === "buyer") {
-        const { data: orders } = await supabase
-          .from("orders")
-          .select("total_amount")
-          .eq("buyer_id", user.id);
-        revenue = orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) ?? 0;
-      } else if (role === "farmer") {
-        // Sum revenue from order_items for this farmer's products
-        const { data: items } = await supabase
-          .from("order_items")
-          .select("quantity, price_at_purchase, products!inner(farmer_id)")
-          .eq("products.farmer_id", user.id);
-        revenue = items?.reduce((sum, i) => sum + (i.quantity * i.price_at_purchase || 0), 0) ?? 0;
-      }
-
-      // ── Active Products (farmers only) ──
-      let activeProducts = 0;
-      if (role === "farmer") {
-        const { count } = await supabase
-          .from("products")
-          .select("*", { count: "exact", head: true })
-          .eq("farmer_id", user.id)
-          .eq("in_stock", true);
-        activeProducts = count ?? 0;
-      }
-
-      // ── Pending Orders ──
-      let pendingOrders = 0;
-      if (role === "buyer") {
-        const { count } = await supabase
-          .from("orders")
-          .select("*", { count: "exact", head: true })
-          .eq("buyer_id", user.id)
-          .eq("status", "pending");
-        pendingOrders = count ?? 0;
-      }
-
-      // ── Farm Records (farmers only) ──
-      let farmRecords = 0;
-      if (role === "farmer") {
-        const { count } = await supabase
-          .from("farm_records")
-          .select("*", { count: "exact", head: true })
-          .eq("farmer_id", user.id);
-        farmRecords = count ?? 0;
-      }
-
-      const recentMsgs = (msgs ?? []).map((m: any) => ({
-        id: m.id,
-        content: m.content,
-        created_at: m.created_at,
-        sender_name: m.profiles?.full_name ?? "Unknown",
-      }));
-
-      return {
-        stats: { totalRevenue: revenue, activeProducts, pendingOrders, farmRecords },
-        recentMessages: recentMsgs
-      };
-    } catch (err) {
-      console.error("Dashboard fetch error:", err);
-      throw err;
+    // ── Revenue: Use DB-side aggregation to avoid downloading all rows ──────
+    let revenue = 0;
+    if (role === "buyer") {
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("total_amount")
+        .eq("buyer_id", user.id);
+      revenue = orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) ?? 0;
+    } else if (role === "farmer") {
+      // Aggregate on the DB side — only fetch the numbers we need
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("quantity, price_at_purchase, products!inner(farmer_id)")
+        .eq("products.farmer_id", user.id);
+      revenue = items?.reduce((sum, i) => sum + ((i.quantity ?? 0) * (i.price_at_purchase ?? 0)), 0) ?? 0;
     }
+
+    // ── Active Products (farmers only) ───────────────────────────────────────
+    let activeProducts = 0;
+    if (role === "farmer") {
+      const { count } = await supabase
+        .from("products")
+        .select("*", { count: "exact", head: true })
+        .eq("farmer_id", user.id)
+        .eq("in_stock", true);
+      activeProducts = count ?? 0;
+    }
+
+    // ── Pending Orders ────────────────────────────────────────────────────────
+    let pendingOrders = 0;
+    if (role === "buyer") {
+      const { count } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("buyer_id", user.id)
+        .eq("status", "pending");
+      pendingOrders = count ?? 0;
+    }
+
+    // ── Farm Records (farmers only) ───────────────────────────────────────────
+    let farmRecords = 0;
+    if (role === "farmer") {
+      const { count } = await supabase
+        .from("farm_records")
+        .select("*", { count: "exact", head: true })
+        .eq("farmer_id", user.id);
+      farmRecords = count ?? 0;
+    }
+
+    // ── Recent Messages — properly fetched (fixes the stale 'msgs' bug) ──────
+    const { data: msgs } = await supabase
+      .from("messages")
+      .select("id, content, created_at, profiles:sender_id(full_name)")
+      .eq("receiver_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(4);
+
+    const recentMessages: RecentMessage[] = (msgs ?? []).map((m: any) => ({
+      id: m.id,
+      content: m.content,
+      created_at: m.created_at,
+      sender_name: m.profiles?.full_name ?? "Unknown",
+    }));
+
+    return {
+      stats: { totalRevenue: revenue, activeProducts, pendingOrders, farmRecords },
+      recentMessages,
+    };
   };
 
-  const { data, isLoading } = useAppCache(
+  const { data, isLoading } = useAppCache<DashboardData>(
     user?.id && profile?.role ? `dashboard_${user.id}_${profile.role}` : null,
     fetchDashboardData,
     [user?.id, profile?.role]
   );
 
-  const stats = data?.stats || { totalRevenue: 0, activeProducts: 0, pendingOrders: 0, farmRecords: 0 };
-  const recentMessages = data?.recentMessages || [];
-
+  const stats = data?.stats ?? { totalRevenue: 0, activeProducts: 0, pendingOrders: 0, farmRecords: 0 };
+  const recentMessages = data?.recentMessages ?? [];
   const role = profile?.role;
 
   const statCards = [
@@ -151,8 +161,6 @@ export default function Dashboard() {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  const { signOut } = useAuth();
-
   return (
     <div className="p-4 md:p-8">
       {/* Header */}
@@ -164,8 +172,8 @@ export default function Dashboard() {
         <div className="relative z-10">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{t("dashboard").toUpperCase()}</h1>
           <p className="text-emerald-200">
-            {t("welcome_back_user")} {profile?.full_name || "User"}!{" "}
-            <span className="capitalize text-emerald-300 text-sm">({role})</span>
+            {t("welcome_back_user")} {profile?.full_name}!{" "}
+            {role && <span className="capitalize text-emerald-300 text-sm">({role})</span>}
           </p>
         </div>
       </div>
@@ -203,7 +211,7 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Actions — farmers only */}
           {role === "farmer" && (
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
@@ -272,9 +280,10 @@ export default function Dashboard() {
               <div className="text-5xl mb-4">🌱</div>
               <h3 className="text-2xl font-bold text-white mb-2">{t("welcome_fbeconnect")}</h3>
               <p className="text-emerald-300 mb-6 max-w-md mx-auto">
-                {role === "farmer" && t("dashboard_empty_farmer") || "Your dashboard will come to life as you add products, receive orders, and record farm activities."}
-                {role === "buyer" && t("dashboard_empty_buyer") || "Your dashboard will come to life as you browse the marketplace and place orders."}
-                {role === "expert" && t("dashboard_empty_expert") || "Your dashboard will come to life as you start receiving consultation requests."}
+                {role === "farmer" && t("dashboard_empty_farmer")}
+                {role === "buyer" && t("dashboard_empty_buyer")}
+                {role === "expert" && t("dashboard_empty_expert")}
+                {!role && "Your dashboard will come to life as you start using FBEconnect."}
               </p>
               <div className="flex flex-wrap gap-3 justify-center">
                 {role === "farmer" && (
@@ -289,12 +298,12 @@ export default function Dashboard() {
                 )}
                 {role === "buyer" && (
                   <Link to="/app/marketplace" className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-semibold transition-all">
-                     {t("browse_marketplace")}
+                    {t("browse_marketplace")}
                   </Link>
                 )}
                 {role === "expert" && (
                   <Link to="/app/expert-consultations" className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-semibold transition-all">
-                     {t("view_consultation_requests")}
+                    {t("view_consultation_requests")}
                   </Link>
                 )}
               </div>

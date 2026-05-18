@@ -83,6 +83,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (mounted && !initialLoadDone.current) {
         console.warn("[Auth] Safety timer fired — forcing loading=false");
         initialLoadDone.current = true;
+        
+        // If we timed out without resolving a valid session + profile, ensure state is cleared
+        setSession(prev => {
+          if (!prev) {
+            setUser(null);
+            setProfile(null);
+          }
+          return prev;
+        });
         setLoading(false);
       }
     }, 6000);
@@ -99,7 +108,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (s?.user) {
           const p = await fetchProfile(s.user.id);
           if (!mounted) return;
-          setProfile(p);
+          
+          if (p) {
+            setProfile(p);
+          } else {
+            // Valid session but NO profile found -> Ghost account. Force cleanup.
+            console.error("[Auth] Ghost account detected on init. Clearing session.");
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+          }
         }
       } catch (err) {
         console.error("[Auth] Init error:", err);
@@ -129,7 +148,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (changedSession?.user) {
           const p = await fetchProfile(changedSession.user.id);
-          if (mounted) setProfile(p);
+          if (!mounted) return;
+          
+          if (p) {
+            setProfile(p);
+          } else {
+            // Valid session but NO profile found -> Ghost account. Force cleanup.
+            console.error("[Auth] Ghost account detected on auth state change. Clearing session.");
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+          }
         } else {
           setProfile(null);
         }
@@ -185,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [profile]
   );
 
-  const isAuthenticated = !!session && !loading;
+  const isAuthenticated = !!session && !!profile && !loading;
 
   return (
     <AuthContext.Provider

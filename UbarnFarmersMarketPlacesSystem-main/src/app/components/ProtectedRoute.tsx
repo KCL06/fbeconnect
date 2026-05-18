@@ -13,7 +13,7 @@ import Loading from "./Loading";
  * ─────────────────────────────────────────────────────────────────────────────
  */
 export default function ProtectedRoute() {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   const location = useLocation();
 
   // Wait for auth verification to complete (only once on mount)
@@ -22,7 +22,7 @@ export default function ProtectedRoute() {
   }
 
   // Redirect unauthenticated users to login
-  if (!session) {
+  if (!session || !profile) {
     return (
       <Navigate
         to="/login"
