@@ -89,6 +89,8 @@ export default function Landing() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { session, loading: authLoading } = useAuth();
+  const isLogin = true; // Landing form is always login-only; Sign Up tab navigates to /register
+  const setIsLogin = (_v: boolean) => {}; // no-op kept for JSX compatibility
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
   const [formData, setFormData] = useState({
     email: "",
