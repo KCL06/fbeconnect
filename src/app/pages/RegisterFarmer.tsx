@@ -16,6 +16,8 @@ import {
   validateYearsExperience,
 } from "../../utils/validation";
 import { validateDocumentUpload, validateImageUpload } from "../../utils/fileValidation";
+import { Turnstile } from "@marsidev/react-turnstile";
+import PasswordStrengthIndicator from "../components/PasswordStrengthIndicator";
 
 // ⚠️ BACKEND: All user inputs must ALSO be validated server-side via:
 //   - Supabase Row-Level Security (RLS) policies
@@ -45,6 +47,9 @@ export default function RegisterFarmer() {
     agreement: false,
   });
 
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
+
   const updateField = (field: string, value: string | boolean | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -68,7 +73,7 @@ export default function RegisterFarmer() {
       }
 
       const pwResult = validatePassword(formData.password);
-      if (!pwResult.valid) { toast.error(pwResult.errors[0]); return; }
+      if (!pwResult.valid || !isPasswordValid) { toast.error("Please ensure your password meets all requirements"); return; }
 
       if (!passwordsMatch(formData.password, formData.confirmPassword)) {
         toast.error("Passwords do not match");
@@ -107,6 +112,10 @@ export default function RegisterFarmer() {
       toast.error("Please accept the terms and conditions");
       return;
     }
+    if (!captchaToken && import.meta.env.PROD) {
+      toast.error("Please complete the CAPTCHA");
+      return;
+    }
 
     // ── File upload validation (MIME via magic bytes + size check) ─────
     if (formData.idDocument) {
@@ -120,7 +129,7 @@ export default function RegisterFarmer() {
     // ⚠️ BACKEND: Re-validate file MIME and size in Supabase Storage policies
     setIsSubmitting(true);
     try {
-      const data = await signUp(formData.email, formData.password, formData.fullName, "farmer");
+      const data = await signUp(formData.email, formData.password, formData.fullName, "farmer", captchaToken);
       if (data.user) {
         // Explicitly upsert the profile row in case the DB trigger hasn't fired yet
         await supabase.from("profiles").upsert({
@@ -197,7 +206,7 @@ export default function RegisterFarmer() {
                 {/* Step 1: Basic Identity */}
                 {currentStep === 1 && (
                   <div className="space-y-4">
-                    {[{ label: "Full Name", field: "fullName", type: "text" }, { label: "National ID", field: "nationalId", type: "text" }, { label: "Phone Number", field: "phone", type: "tel" }, { label: "Email", field: "email", type: "email" }, { label: "Password", field: "password", type: "password" }, { label: "Confirm Password", field: "confirmPassword", type: "password" }].map(({ label, field, type }) => (
+                    {[{ label: "Full Name", field: "fullName", type: "text" }, { label: "National ID", field: "nationalId", type: "text" }, { label: "Phone Number", field: "phone", type: "tel" }, { label: "Email", field: "email", type: "email" }].map(({ label, field, type }) => (
                       <div key={field}>
                         <label className="block text-sm font-medium text-emerald-100 mb-1">{label} *</label>
                         <input
@@ -209,6 +218,27 @@ export default function RegisterFarmer() {
                         />
                       </div>
                     ))}
+                    <div>
+                      <label className="block text-sm font-medium text-emerald-100 mb-1">Password *</label>
+                      <input
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => updateField("password", e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/50 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all"
+                        required
+                      />
+                      <PasswordStrengthIndicator password={formData.password} onValidChange={setIsPasswordValid} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-emerald-100 mb-1">Confirm Password *</label>
+                      <input
+                        type="password"
+                        value={formData.confirmPassword}
+                        onChange={(e) => updateField("confirmPassword", e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/50 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all"
+                        required
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -298,6 +328,14 @@ export default function RegisterFarmer() {
                       <label htmlFor="agreement" className="text-sm text-emerald-200 cursor-pointer">
                         I agree to the terms and conditions and declare that all information provided is authentic
                       </label>
+                    </div>
+                    <div className="flex justify-center py-2">
+                      <Turnstile 
+                        siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"} 
+                        onSuccess={(token) => setCaptchaToken(token)}
+                        onError={() => setCaptchaToken(null)}
+                        options={{ theme: 'dark', size: 'flexible' }}
+                      />
                     </div>
                   </div>
                 )}

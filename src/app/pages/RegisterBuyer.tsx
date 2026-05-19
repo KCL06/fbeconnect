@@ -6,8 +6,9 @@ import Footer from "../components/Footer";
 import { toast } from "sonner";
 import { signUp, saveBuyerProfile } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
-import { validateEmail, validatePassword, passwordsMatch, validatePhone, validateName } from "../../utils/validation";
 import { validateDocumentUpload } from "../../utils/fileValidation";
+import { Turnstile } from "@marsidev/react-turnstile";
+import PasswordStrengthIndicator from "../components/PasswordStrengthIndicator";
 
 // ⚠️ BACKEND: All inputs must also be validated server-side via RLS/Edge Functions
 
@@ -28,9 +29,11 @@ export default function RegisterBuyer() {
     accountType: "individual",
     // Step 3
     idDocument: null as File | null,
-    paymentMethod: "",
     agreement: false,
   });
+
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
 
   const updateField = (field: string, value: string | boolean | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -43,7 +46,7 @@ export default function RegisterBuyer() {
       if (!validateEmail(formData.email)) { toast.error("Please enter a valid email address"); return; }
       if (!validatePhone(formData.phone)) { toast.error("Please enter a valid phone number (e.g. 0712345678)"); return; }
       const pwResult = validatePassword(formData.password);
-      if (!pwResult.valid) { toast.error(pwResult.errors[0]); return; }
+      if (!pwResult.valid || !isPasswordValid) { toast.error("Please ensure your password meets all requirements"); return; }
       if (!passwordsMatch(formData.password, formData.confirmPassword)) { toast.error("Passwords do not match"); return; }
     }
     if (currentStep === 2) {
@@ -69,6 +72,10 @@ export default function RegisterBuyer() {
       toast.error("Please accept the terms and conditions");
       return;
     }
+    if (!captchaToken && import.meta.env.PROD) {
+      toast.error("Please complete the CAPTCHA");
+      return;
+    }
     // ── File upload validation ─────────────────────────────────────
     if (formData.idDocument) {
       const docResult = await validateDocumentUpload(formData.idDocument);
@@ -77,7 +84,7 @@ export default function RegisterBuyer() {
     // ⚠️ BACKEND: Re-validate file MIME and size in Supabase Storage policies
     setIsSubmitting(true);
     try {
-      const data = await signUp(formData.email, formData.password, formData.fullName, "buyer");
+      const data = await signUp(formData.email, formData.password, formData.fullName, "buyer", captchaToken);
       if (data.user) {
         // Explicitly upsert the profile row to guarantee role is saved
         await supabase.from("profiles").upsert({
@@ -144,12 +151,33 @@ export default function RegisterBuyer() {
             <form onSubmit={handleSubmit}>
               {currentStep === 1 && (
                 <div className="space-y-4">
-                  {[{label:"Full Name",field:"fullName",type:"text"},{label:"Email",field:"email",type:"email"},{label:"Phone Number",field:"phone",type:"tel"},{label:"Password",field:"password",type:"password"},{label:"Confirm Password",field:"confirmPassword",type:"password"}].map(({label,field,type}) => (
+                  {[{label:"Full Name",field:"fullName",type:"text"},{label:"Email",field:"email",type:"email"},{label:"Phone Number",field:"phone",type:"tel"}].map(({label,field,type}) => (
                     <div key={field}>
                       <label className="block text-sm font-medium text-emerald-100 mb-1">{label} *</label>
                       <input type={type} value={(formData as any)[field]} onChange={(e) => updateField(field, e.target.value)} className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/50 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all" required />
                     </div>
                   ))}
+                  <div>
+                    <label className="block text-sm font-medium text-emerald-100 mb-1">Password *</label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => updateField("password", e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/50 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all"
+                      required
+                    />
+                    <PasswordStrengthIndicator password={formData.password} onValidChange={setIsPasswordValid} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-emerald-100 mb-1">Confirm Password *</label>
+                    <input
+                      type="password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => updateField("confirmPassword", e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 text-white placeholder-emerald-300/50 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all"
+                      required
+                    />
+                  </div>
                 </div>
               )}
 
@@ -227,6 +255,14 @@ export default function RegisterBuyer() {
                   <div className="flex items-start gap-3 bg-white/5 border border-white/10 rounded-xl p-4">
                     <input type="checkbox" id="agreement" checked={formData.agreement} onChange={(e) => updateField("agreement", e.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-500" required />
                     <label htmlFor="agreement" className="text-sm text-emerald-200 cursor-pointer">I agree to the platform rules and terms of service</label>
+                  </div>
+                  <div className="flex justify-center py-2">
+                    <Turnstile 
+                      siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"} 
+                      onSuccess={(token) => setCaptchaToken(token)}
+                      onError={() => setCaptchaToken(null)}
+                      options={{ theme: 'dark', size: 'flexible' }}
+                    />
                   </div>
                 </div>
               )}

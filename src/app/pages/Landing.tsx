@@ -184,11 +184,11 @@ export default function Landing() {
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header />
         {/* Hero Section */}
-        <div className="container mx-auto px-6 py-12">
-          <div className="grid lg:grid-cols-2 gap-12 items-center min-h-screen">
+        <div className="container mx-auto px-4 sm:px-6 py-8 md:py-12">
+          <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center min-h-screen">
             {/* Left Side - Info */}
-            <div className="text-white">
-              <h2 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+            <div className="text-white mt-12 lg:mt-0">
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 leading-tight">
                 {t('hero_title')}
               </h2>
 
@@ -211,7 +211,7 @@ export default function Landing() {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-6 mt-12">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 mt-12 text-center sm:text-left">
                 <div>
                   <p className="text-4xl font-bold text-white mb-1">5000+</p>
                   <p className="text-emerald-200 text-sm">Active Farmers</p>
@@ -298,16 +298,16 @@ export default function Landing() {
                           }}
                           className={`w-full bg-white/10 hover:bg-white/20 border-2 border-white/20 ${m.border} rounded-xl p-6 transition-all group`}
                         >
-                          <div className="flex items-center gap-4">
+                          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
                             <div
-                              className="w-12 h-12 rounded-full group-hover:scale-110 transition-transform bg-cover bg-center border-2 border-emerald-400/50"
+                              className="w-16 h-16 sm:w-12 sm:h-12 rounded-full group-hover:scale-110 transition-transform bg-cover bg-center border-2 border-emerald-400/50 flex-shrink-0"
                               style={{ backgroundImage: `url('${m.img}')` }}
                             />
-                            <div className="flex-1 text-left">
+                            <div className="flex-1 text-center sm:text-left">
                               <p className="text-white font-bold text-lg">{m.label}</p>
                               <p className="text-emerald-200 text-sm">{m.desc}</p>
                             </div>
-                            <ArrowRight className="w-6 h-6 text-emerald-300 group-hover:translate-x-1 transition-transform" />
+                            <ArrowRight className="hidden sm:block w-6 h-6 text-emerald-300 group-hover:translate-x-1 transition-transform" />
                           </div>
                         </button>
                       );
@@ -425,7 +425,7 @@ export default function Landing() {
             <div className="bg-white/5 backdrop-blur-md rounded-3xl p-8 md:p-12 border border-white/10 shadow-2xl">
               <div className="grid md:grid-cols-2 gap-12 items-center">
                 <div>
-                  <h2 className="text-4xl font-bold text-white mb-6 flex items-center gap-3">
+                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 flex items-center justify-center md:justify-start gap-3">
                     <Leaf className="w-8 h-8 text-emerald-400" />
                     About FBEconnect
                   </h2>
@@ -436,8 +436,8 @@ export default function Landing() {
                     Founded with a vision to digitize agriculture, our platform serves as a comprehensive ecosystem. Whether you're looking to manage your farm efficiently, sell your produce at competitive market prices, or seek professional agronomy advice, FBEconnect is your trusted partner in growth.
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-emerald-900/40 p-6 rounded-2xl border border-emerald-500/20 text-center">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="bg-emerald-900/40 p-4 sm:p-6 rounded-2xl border border-emerald-500/20 text-center">
                     <h3 className="text-3xl font-bold text-white mb-2">10K+</h3>
                     <p className="text-emerald-300 text-sm">Verified Farmers</p>
                   </div>
@@ -460,8 +460,8 @@ export default function Landing() {
 
           {/* Services Section */}
           <section id="services" className="py-20 scroll-mt-20">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-white mb-4">Our Services</h2>
+            <div className="text-center mb-10 md:mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 px-4">Our Services</h2>
               <p className="text-emerald-200 text-lg max-w-2xl mx-auto">
                 Comprehensive solutions tailored for the modern agricultural ecosystem.
               </p>
@@ -489,7 +489,7 @@ export default function Landing() {
             <div className="bg-gradient-to-br from-emerald-900/80 to-emerald-800/80 backdrop-blur-md rounded-3xl p-8 md:p-12 border border-emerald-500/30 shadow-2xl">
               <div className="grid md:grid-cols-2 gap-12">
                 <div>
-                  <h2 className="text-4xl font-bold text-white mb-6 flex items-center gap-3">
+                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 flex items-center justify-center md:justify-start gap-3">
                     Contact Us
                   </h2>
                   <p className="text-emerald-100 text-lg mb-8">

@@ -141,8 +141,8 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-emerald-700/50">
-            <nav className="flex flex-col gap-1">
+          <div className="md:hidden py-4 border-t border-emerald-700/50 max-h-[calc(100vh-4rem)] overflow-y-auto">
+            <nav className="flex flex-col gap-2 px-2">
               {navLinks.map((link) => {
                 const isActive = !link.isHash && location.pathname === link.to;
                 return link.isHash ? (

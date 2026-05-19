@@ -263,7 +263,7 @@ export default function Layout() {
       </aside>
 
       {/* ── Main Content ── */}
-      <main className="flex-1 overflow-auto relative z-10 flex flex-col min-h-screen">
+      <main className="flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto relative z-10 flex flex-col min-h-screen">
 
         {/* Desktop Top Header */}
         <div className="hidden lg:flex sticky top-0 bg-emerald-900/80 backdrop-blur-md border-b border-emerald-700/50 px-8 py-3 z-10 items-center justify-between shadow-sm">

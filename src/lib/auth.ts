@@ -27,7 +27,8 @@ export async function signUp(
   email: string,
   password: string,
   fullName: string,
-  role: UserRole
+  role: UserRole,
+  captchaToken?: string | null
 ) {
   // Sanitize text inputs before sending to Supabase
   const cleanEmail = cleanInput(email).toLowerCase();
@@ -41,6 +42,7 @@ export async function signUp(
         full_name: cleanName,
         role,
       },
+      captchaToken: captchaToken || undefined,
     },
   });
   if (error) {
@@ -59,11 +61,12 @@ export async function signUp(
  * ⚠️ BACKEND: Implement server-side rate limiting via Supabase Auth hook or
  * Vercel Edge Middleware to prevent brute-force attacks.
  */
-export async function signIn(email: string, password: string) {
+export async function signIn(email: string, password: string, captchaToken?: string | null) {
   const cleanEmail = cleanInput(email).toLowerCase();
   const { data, error } = await supabase.auth.signInWithPassword({
     email: cleanEmail,
     password,
+    options: { captchaToken: captchaToken || undefined },
   });
   if (error) {
     console.error("[Auth] Sign In Error:", error.message);

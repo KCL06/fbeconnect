@@ -10,6 +10,8 @@ import { useRateLimit } from "../../hooks/useRateLimit";
 import { validateEmail } from "../../utils/validation";
 import { supabase } from "../../lib/supabase";
 import { getErrorMessage } from "../../lib/api";
+import { Turnstile } from "@marsidev/react-turnstile";
+import PasswordStrengthIndicator from "../components/PasswordStrengthIndicator";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -22,6 +24,10 @@ export default function Login() {
   const [showMfa, setShowMfa]     = useState(false);
   const [mfaCode, setMfaCode]     = useState("");
   const [mfaFactorId, setMfaFactorId] = useState("");
+  
+  // Captcha state
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
 
   // ── Rate limiting (max 5 failed attempts within 5 min → 30 s lock) ──────
   const { isThrottled, remainingSeconds, attemptsLeft, recordAttempt, reset } =
@@ -55,12 +61,19 @@ export default function Login() {
       toast.error("Please enter a valid email address");
       return;
     }
+    if (!captchaToken && import.meta.env.PROD) {
+       // Only enforce in prod to not block dev if key is missing, or enforce if key exists
+       // We'll enforce if there's no token
+       toast.error("Please complete the CAPTCHA");
+       return;
+    }
 
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
+        options: { captchaToken: captchaToken || undefined },
       });
 
       if (error) {
@@ -288,12 +301,29 @@ export default function Login() {
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-300 hover:text-white transition-colors p-2"
                           aria-label={showPassword ? "Hide password" : "Show password"}
                         >
                           {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                       </div>
+                      
+                      <PasswordStrengthIndicator 
+                        password={formData.password} 
+                        onValidChange={setIsPasswordValid}
+                      />
+                    </div>
+
+                    <div className="flex justify-center w-full py-2">
+                      <Turnstile 
+                        siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || "1x00000000000000000000AA"} 
+                        onSuccess={(token) => setCaptchaToken(token)}
+                        onError={() => setCaptchaToken(null)}
+                        options={{
+                          theme: 'dark',
+                          size: 'flexible'
+                        }}
+                      />
                     </div>
 
                     <div className="flex items-center justify-between text-sm">
