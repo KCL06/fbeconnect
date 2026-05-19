@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { Package, Truck, CheckCircle, Clock, MapPin, Phone, X, FileText, Printer } from "lucide-react";
+import { Package, Truck, CheckCircle, Clock, MapPin, Phone, X, FileText, Printer, Download, Star } from "lucide-react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -39,6 +41,9 @@ export default function OrderTracking() {
   const [contactModal, setContactModal] = useState<any | null>(null);
   const [updateModal, setUpdateModal] = useState<any | null>(null);
   const [receiptModal, setReceiptModal] = useState<any | null>(null);
+  const [reviewModal, setReviewModal] = useState<any | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -153,6 +158,11 @@ export default function OrderTracking() {
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
+      // Prompt for cancellation
+      if (newStatus === "cancelled" && !window.confirm("Are you sure you want to cancel this order? This action cannot be undone.")) {
+        return;
+      }
+
       const { error } = await supabase
         .from('orders')
         .update({ status: newStatus })
@@ -164,6 +174,73 @@ export default function OrderTracking() {
       setUpdateModal(null);
     } catch (err: any) {
       toast.error("Failed to update status: " + err.message);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewModal || !profile) return;
+    
+    try {
+      const farmerId = reviewModal.items?.[0]?.product?.farmer_id;
+      if (!farmerId) throw new Error("Could not find farmer ID for this order.");
+
+      const { error } = await supabase.from('reviews').insert({
+        reviewer_id: profile.id,
+        farmer_id: farmerId,
+        product_name: reviewModal.product,
+        rating: reviewRating,
+        comment: reviewComment,
+        helpful_count: 0
+      });
+
+      if (error) throw error;
+
+      toast.success("Review submitted successfully!");
+      setReviewModal(null);
+      setReviewRating(5);
+      setReviewComment("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to submit review: " + err.message);
+    }
+  };
+
+  const downloadReceipt = (order: any) => {
+    try {
+      const doc = new jsPDF();
+      doc.setFontSize(20);
+      doc.text("FBEconnect Order Receipt", 14, 22);
+      
+      doc.setFontSize(12);
+      doc.text(`Order ID: ${order.shortId}`, 14, 32);
+      doc.text(`Date: ${order.orderDate}`, 14, 40);
+      doc.text(`Buyer: ${order.buyer}`, 14, 48);
+      doc.text(`Status: ${order.status.toUpperCase()}`, 14, 56);
+      
+      const tableData = order.items?.map((item: any) => [
+        item.product.name,
+        item.quantity.toString(),
+        `KES ${item.price_at_purchase.toLocaleString()}`,
+        `KES ${(item.price_at_purchase * item.quantity).toLocaleString()}`
+      ]) || [];
+      
+      (doc as any).autoTable({
+        startY: 64,
+        head: [['Item', 'Qty', 'Unit Price', 'Total']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [16, 185, 129] } // emerald-500
+      });
+      
+      const finalY = (doc as any).lastAutoTable.finalY || 64;
+      doc.setFontSize(14);
+      doc.text(`Total Paid: KES ${(order.totalAmount || 0).toLocaleString()}`, 14, finalY + 10);
+      
+      doc.save(`Receipt_${order.shortId}.pdf`);
+      toast.success("Receipt downloaded successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to generate PDF receipt");
     }
   };
 
@@ -272,12 +349,30 @@ export default function OrderTracking() {
                         Receipt
                       </button>
                     )}
-                    {profile?.role === 'farmer' && order.items?.some((i: any) => i.product.farmer_id === profile.id) && order.status !== "delivered" && (
+                    {profile?.role === 'farmer' && order.items?.some((i: any) => i.product.farmer_id === profile.id) && order.status !== "delivered" && order.status !== "cancelled" && (
                       <button
                         onClick={() => setUpdateModal(order)}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all"
                       >
                         Update Status
+                      </button>
+                    )}
+                    {profile?.role === 'buyer' && order.status === "pending" && (
+                      <button
+                        onClick={() => handleUpdateStatus(order.id, 'cancelled')}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all border border-red-500"
+                      >
+                        <X className="w-4 h-4" />
+                        Cancel Order
+                      </button>
+                    )}
+                    {profile?.role === 'buyer' && order.status === "delivered" && (
+                      <button
+                        onClick={() => setReviewModal(order)}
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all border border-yellow-500"
+                      >
+                        <Star className="w-4 h-4" />
+                        Leave Review
                       </button>
                     )}
                   </div>
@@ -468,13 +563,75 @@ export default function OrderTracking() {
               <button
                 onClick={() => {
                   toast.success("Printing receipt...");
-                  // In a real app, this would trigger window.print() on a dedicated printable page
+                  window.print();
                 }}
                 className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
               >
-                <Printer className="w-5 h-5" /> Print Receipt
+                <Printer className="w-5 h-5" /> Print
+              </button>
+              <button
+                onClick={() => downloadReceipt(receiptModal)}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+              >
+                <Download className="w-5 h-5" /> Download PDF
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {reviewModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-emerald-900 border border-emerald-700/50 rounded-2xl p-8 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Review Product</h2>
+              <button onClick={() => setReviewModal(null)} className="text-gray-400 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="mb-4">
+              <p className="text-emerald-200 text-sm mb-1">Product</p>
+              <p className="text-white font-semibold">{reviewModal.product}</p>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-emerald-200 text-sm mb-2">Rating</p>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setReviewRating(star)}
+                    className="focus:outline-none hover:scale-110 transition-transform"
+                  >
+                    <Star
+                      className={`w-8 h-8 ${
+                        star <= reviewRating
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-gray-400"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-emerald-200 text-sm mb-2">Comment</label>
+              <textarea
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                className="w-full bg-white/10 border border-emerald-700/50 rounded-xl p-4 text-white placeholder-emerald-300/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none h-32"
+                placeholder="Share your experience with this order..."
+              />
+            </div>
+
+            <button
+              onClick={handleSubmitReview}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-semibold transition-all"
+            >
+              Submit Review
+            </button>
           </div>
         </div>
       )}

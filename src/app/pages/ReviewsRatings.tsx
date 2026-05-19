@@ -1,74 +1,102 @@
 import { Star, ThumbsUp, MessageSquare } from "lucide-react";
-import { useState } from "react";
-
-const reviews = [
-  {
-    id: 1,
-    product: "Organic Tomatoes",
-    reviewer: "John Mwangi",
-    rating: 5,
-    comment: "Excellent quality tomatoes! Fresh and organic as advertised. Will definitely order again.",
-    date: "March 8, 2026",
-    helpful: 12,
-    avatar: "👨🏾‍🌾",
-  },
-  {
-    id: 2,
-    product: "Fresh Maize",
-    reviewer: "Sarah Wanjiru",
-    rating: 4,
-    comment: "Good quality maize. Delivery was on time. Only minor issue was packaging could be better.",
-    date: "March 7, 2026",
-    helpful: 8,
-    avatar: "👩🏾",
-  },
-  {
-    id: 3,
-    product: "Green Cabbage",
-    reviewer: "David Ochieng",
-    rating: 5,
-    comment: "Perfect! The cabbage was fresh and crisp. Great farmer to work with.",
-    date: "March 5, 2026",
-    helpful: 15,
-    avatar: "👨🏿‍💼",
-  },
-  {
-    id: 4,
-    product: "Fresh Milk",
-    reviewer: "Grace Akinyi",
-    rating: 5,
-    comment: "Best quality milk in the region. Delivery is always on time and the farmer is very professional.",
-    date: "March 3, 2026",
-    helpful: 20,
-    avatar: "👩🏾‍💼",
-  },
-  {
-    id: 5,
-    product: "Sweet Potatoes",
-    reviewer: "James Kamau",
-    rating: 4,
-    comment: "Good product overall. Would appreciate more variety in sizes available.",
-    date: "March 1, 2026",
-    helpful: 5,
-    avatar: "👨🏾",
-  },
-];
-
-const ratingDistribution = [
-  { stars: 5, count: 45, percentage: 75 },
-  { stars: 4, count: 12, percentage: 20 },
-  { stars: 3, count: 2, percentage: 3 },
-  { stars: 2, count: 1, percentage: 2 },
-  { stars: 1, count: 0, percentage: 0 },
-];
+import { useState, useEffect } from "react";
+import { supabase } from "../../lib/supabase";
+import { toast } from "sonner";
+import { useAuth } from "../context/AuthContext";
 
 export default function ReviewsRatings() {
+  const { profile } = useAuth();
   const [filter, setFilter] = useState("All Reviews");
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const totalReviews = ratingDistribution.reduce((acc, r) => acc + r.count, 0);
-  const averageRating = (
-    ratingDistribution.reduce((acc, r) => acc + r.stars * r.count, 0) / totalReviews
-  ).toFixed(1);
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        let query = supabase.from('reviews').select(`
+          *,
+          reviewer:profiles!reviewer_id(full_name)
+        `).order('created_at', { ascending: false });
+
+        // If the user is a farmer, only show their reviews. 
+        // Otherwise (buyer or expert), they might see reviews they wrote or general reviews.
+        // For simplicity, we just fetch all or filter if needed.
+        if (profile?.role === 'farmer') {
+          query = query.eq('farmer_id', profile.id);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        const formatted = data.map((r: any) => ({
+          id: r.id,
+          product: r.product_name,
+          reviewer: r.reviewer?.full_name || "Unknown Buyer",
+          rating: r.rating,
+          comment: r.comment,
+          date: new Date(r.created_at).toLocaleDateString(),
+          helpful: r.helpful_count || 0,
+          avatar: "👤",
+        }));
+        setReviews(formatted);
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Failed to load reviews");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (profile) {
+      fetchReviews();
+    }
+  }, [profile]);
+
+  const handleHelpful = async (id: string, currentHelpful: number) => {
+    try {
+      const { error } = await supabase
+        .from('reviews')
+        .update({ helpful_count: currentHelpful + 1 })
+        .eq('id', id);
+      if (error) throw error;
+      
+      setReviews(reviews.map(r => r.id === id ? { ...r, helpful: r.helpful + 1 } : r));
+      toast.success("Marked as helpful!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update helpful count");
+    }
+  };
+
+  const totalReviews = reviews.length;
+  const averageRating = totalReviews > 0 
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1)
+    : "0.0";
+
+  const getDistribution = () => {
+    const dist = [
+      { stars: 5, count: 0, percentage: 0 },
+      { stars: 4, count: 0, percentage: 0 },
+      { stars: 3, count: 0, percentage: 0 },
+      { stars: 2, count: 0, percentage: 0 },
+      { stars: 1, count: 0, percentage: 0 },
+    ];
+    
+    if (totalReviews === 0) return dist;
+
+    reviews.forEach(r => {
+      const index = dist.findIndex(d => d.stars === r.rating);
+      if (index !== -1) dist[index].count += 1;
+    });
+
+    dist.forEach(d => {
+      d.percentage = Math.round((d.count / totalReviews) * 100);
+    });
+
+    return dist;
+  };
+
+  const ratingDistribution = getDistribution();
 
   const filteredReviews = reviews.filter((review) => {
     if (filter === "5 Stars") return review.rating === 5;
@@ -76,6 +104,10 @@ export default function ReviewsRatings() {
     if (filter === "3 Stars & Below") return review.rating <= 3;
     return true; // "All Reviews"
   });
+
+  if (isLoading) {
+    return <div className="p-8 text-white">Loading reviews...</div>;
+  }
 
   return (
     <div className="p-8">
@@ -209,7 +241,10 @@ export default function ReviewsRatings() {
                 <p className="text-gray-300 text-sm mb-4">{review.comment}</p>
 
                 <div className="flex items-center gap-4">
-                  <button className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 text-sm transition-colors">
+                  <button 
+                    onClick={() => handleHelpful(review.id, review.helpful)}
+                    className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 text-sm transition-colors"
+                  >
                     <ThumbsUp className="w-4 h-4" />
                     <span>Helpful ({review.helpful})</span>
                   </button>

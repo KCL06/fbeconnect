@@ -1,90 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-
-const marketPrices = [
-  {
-    product: "Maize",
-    currentPrice: "KES 65/kg",
-    previousPrice: "KES 60/kg",
-    change: "+8.3%",
-    trend: "up",
-    image: "https://images.unsplash.com/photo-1765337094670-b91926662b1f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYWl6ZSUyMGNvcm4lMjBncmFpbiUyMGhhcnZlc3R8ZW58MXx8fHwxNzc2Mjc2NzkxfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Grains",
-  },
-  {
-    product: "Tomatoes",
-    currentPrice: "KES 110/kg",
-    previousPrice: "KES 120/kg",
-    change: "-8.3%",
-    trend: "down",
-    image: "https://images.unsplash.com/photo-1700064165267-8fa68ef07167?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMHRvbWF0b2VzJTIwcmVkJTIwdmVnZXRhYmxlfGVufDF8fHx8MTc3NjI3Njc5MXww&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Vegetables",
-  },
-  {
-    product: "Cabbage",
-    currentPrice: "KES 75/kg",
-    previousPrice: "KES 75/kg",
-    change: "0%",
-    trend: "stable",
-    image: "https://images.unsplash.com/photo-1555447740-6a812da65e7f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncmVlbiUyMGNhYmJhZ2UlMjB2ZWdldGFibGV8ZW58MXx8fHwxNzc2MjY0NTc1fDA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Vegetables",
-  },
-  {
-    product: "Onions",
-    currentPrice: "KES 90/kg",
-    previousPrice: "KES 85/kg",
-    change: "+5.9%",
-    trend: "up",
-    image: "https://images.unsplash.com/photo-1741517480859-cc010cff7e6a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvbmlvbnMlMjB5ZWxsb3clMjBidWxiJTIwbWFya2V0fGVufDF8fHx8MTc3NjI3Njc5N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Vegetables",
-  },
-  {
-    product: "Potatoes",
-    currentPrice: "KES 55/kg",
-    previousPrice: "KES 60/kg",
-    change: "-8.3%",
-    trend: "down",
-    image: "https://images.unsplash.com/photo-1744659751904-3b2e5c095323?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwb3RhdG9lcyUyMGZyZXNoJTIwaGFydmVzdHxlbnwxfHx8fDE3NzYyNzY3OTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Vegetables",
-  },
-  {
-    product: "Carrots",
-    currentPrice: "KES 80/kg",
-    previousPrice: "KES 80/kg",
-    change: "0%",
-    trend: "stable",
-    image: "https://images.unsplash.com/photo-1687199128849-f67635c09120?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMGNhcnJvdHMlMjB2ZWdldGFibGUlMjBtYXJrZXR8ZW58MXx8fHwxNzc2Mjc2NzkzfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Vegetables",
-  },
-  {
-    product: "Beans",
-    currentPrice: "KES 140/kg",
-    previousPrice: "KES 130/kg",
-    change: "+7.7%",
-    trend: "up",
-    image: "https://images.unsplash.com/photo-1508900173264-bb171fa617e4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxncmVlbiUyMGJlYW5zJTIwbGVndW1lJTIwaGFydmVzdHxlbnwxfHx8fDE3NzYyNzY3OTR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Legumes",
-  },
-  {
-    product: "Wheat",
-    currentPrice: "KES 70/kg",
-    previousPrice: "KES 75/kg",
-    change: "-6.7%",
-    trend: "down",
-    image: "https://images.unsplash.com/photo-1664673789865-940b6a72f51d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3aGVhdCUyMGdyYWluJTIwZmllbGQlMjBoYXJ2ZXN0fGVufDF8fHx8MTc3NjI3Njc5NHww&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Grains",
-  },
-  {
-    product: "Rice",
-    currentPrice: "KES 120/kg",
-    previousPrice: "KES 115/kg",
-    change: "+4.3%",
-    trend: "up",
-    image: "https://images.unsplash.com/photo-1651793371427-ad065df0d208?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxyaWNlJTIwZ3JhaW4lMjB3aGl0ZSUyMGZvb2R8ZW58MXx8fHwxNzc2Mjc2Nzk1fDA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Grains",
-  },
-];
+import { supabase } from "../../lib/supabase";
 
 type FilterType = "All" | "up" | "down" | "stable";
 
@@ -96,14 +13,59 @@ export default function MarketPrices() {
     ? marketPrices
     : marketPrices.filter(p => p.trend === activeFilter);
 
+  const [marketPrices, setMarketPrices] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchPrices = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.from('market_prices').select('*').order('product');
+      if (error) throw error;
+      
+      const formatted = data.map((item: any) => {
+        let changePercent = 0;
+        if (item.previous_price_kes > 0) {
+          changePercent = ((item.current_price_kes - item.previous_price_kes) / item.previous_price_kes) * 100;
+        }
+        const changeStr = changePercent > 0 ? `+${changePercent.toFixed(1)}%` : `${changePercent.toFixed(1)}%`;
+        
+        return {
+          id: item.id,
+          product: item.product,
+          currentPrice: `KES ${item.current_price_kes}/kg`,
+          previousPrice: `KES ${item.previous_price_kes}/kg`,
+          change: changeStr,
+          trend: item.trend,
+          image: item.image_url,
+          category: item.category,
+        };
+      });
+      setMarketPrices(formatted);
+      setLastUpdated(new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }));
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to load market prices");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrices();
+  }, []);
+
   const handleRefresh = () => {
+    fetchPrices();
     toast.success("Market prices refreshed successfully!");
-    setLastUpdated("April 15, 2026 - " + new Date().toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" }));
   };
 
   const upCount = marketPrices.filter(p => p.trend === "up").length;
   const downCount = marketPrices.filter(p => p.trend === "down").length;
   const stableCount = marketPrices.filter(p => p.trend === "stable").length;
+
+  if (isLoading) {
+    return <div className="p-8 text-white">Loading market prices...</div>;
+  }
 
   return (
     <div className="p-8">
